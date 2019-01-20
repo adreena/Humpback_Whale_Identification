@@ -6,6 +6,8 @@ import csv
 import os
 
 
+# Get next batch of data
+#################################################################################
 def get_next_batch(image_path, label_file, batch_size, image_shape):
     """
     Creates batches of training data
@@ -30,3 +32,41 @@ def get_next_batch(image_path, label_file, batch_size, image_shape):
             labels.append(label)
 
         yield np.array(images), np.array(labels)
+
+# Download VGG
+#################################################################################
+def maybe_download_pretrained_vgg(data_dir):
+    """
+    Download and extract pretrained vgg model if it doesn't exist
+    :param data_dir: Directory to download the model to
+    """
+    vgg_filename = 'vgg.zip'
+    vgg_path = os.path.join(data_dir, 'vgg')
+    vgg_files = [
+        os.path.join(vgg_path, 'variables/variables.data-00000-of-00001'),
+        os.path.join(vgg_path, 'variables/variables.index'),
+        os.path.join(vgg_path, 'saved_model.pb')]
+
+    missing_vgg_files = [vgg_file for vgg_file in vgg_files if not os.path.exists(vgg_file)]
+    if missing_vgg_files:
+        # Clean vgg dir
+        if os.path.exists(vgg_path):
+            shutil.rmtree(vgg_path)
+        os.makedirs(vgg_path)
+
+        # Download vgg
+        print('Downloading pre-trained vgg model...')
+        with DLProgress(unit='B', unit_scale=True, miniters=1) as pbar:
+            urlretrieve(
+                'https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/vgg.zip',
+                os.path.join(vgg_path, vgg_filename),
+                pbar.hook)
+
+        # Extract vgg
+        print('Extracting model...')
+        zip_ref = zipfile.ZipFile(os.path.join(vgg_path, vgg_filename), 'r')
+        zip_ref.extractall(data_dir)
+        zip_ref.close()
+
+        # Remove zip file to save space
+        os.remove(os.path.join(vgg_path, vgg_filename))
